@@ -8,7 +8,7 @@ class SoftmaxClassifier:
     self.theta = None
 
   def train(self, X, y, learning_rate=1e-3, reg=1e-5, num_iters=100,
-            batch_size=200, verbose=False):
+            batch_size=200, verbose=False, engine = "bgd"):
     """
     Train the classifier using mini-batch stochastic gradient descent.
 
@@ -27,53 +27,59 @@ class SoftmaxClassifier:
     """
     num_train,dim = X.shape
     num_classes = np.max(y) + 1 # assume y takes values 0...K-1 where K is number of classes
-    self.theta = np.random.randn(dim,num_classes) * 0.001
+    #self.theta = np.random.randn(dim,num_classes) * 0.001
+    self.theta = np.zeros((dim,num_classes))
 
-    # Run stochastic gradient descent to optimize theta
-    loss_history = []
-    for it in xrange(num_iters):
-      X_batch = None
-      y_batch = None
+    if engine is "fmin":
+      y_mat=convert_y_to_matrix(y)
+      theta_opt_norm = scipy.optimize.fmin_bfgs(self.loss_fmin, self.theta, fprime = self.grad_fmin, args=(X,y_mat,reg),maxiter=num_iters)
+      self.theta = theta_opt_norm
+    else:
+      # Run stochastic gradient descent to optimize theta
+      loss_history = []
+      for it in xrange(num_iters):
+        X_batch = None
+        y_batch = None
 
-      #########################################################################
-      # TODO:                                                                 #
-      # Sample batch_size elements from the training data and their           #
-      # corresponding labels to use in this round of gradient descent.        #
-      # Store the data in X_batch and their corresponding labels in           #
-      # y_batch; after sampling X_batch should have shape (batch_size, dim)   #
-      # and y_batch should have shape (batch_size,)                           #
-      #                                                                       #
-      # Hint: Use np.random.choice to generate indices. Sampling with         #
-      # replacement is faster than sampling without replacement.              #
-      #########################################################################
-      # Hint: 3 lines of code expected
-      sample_idx=np.random.choice(num_train,batch_size)
-      X_batch = X[sample_idx,:]
-      y_batch = y[sample_idx]
+        #########################################################################
+        # TODO:                                                                 #
+        # Sample batch_size elements from the training data and their           #
+        # corresponding labels to use in this round of gradient descent.        #
+        # Store the data in X_batch and their corresponding labels in           #
+        # y_batch; after sampling X_batch should have shape (batch_size, dim)   #
+        # and y_batch should have shape (batch_size,)                           #
+        #                                                                       #
+        # Hint: Use np.random.choice to generate indices. Sampling with         #
+        # replacement is faster than sampling without replacement.              #
+        #########################################################################
+        # Hint: 3 lines of code expected
+        sample_idx=np.random.choice(num_train,batch_size)
+        X_batch = X[sample_idx,:]
+        y_batch = y[sample_idx]
 
 
-      #########################################################################
-      #                       END OF YOUR CODE                                #
-      #########################################################################
+        #########################################################################
+        #                       END OF YOUR CODE                                #
+        #########################################################################
 
-      # evaluate loss and gradient
-      loss, grad = self.loss(X_batch, y_batch, reg)
-      loss_history.append(loss)
+        # evaluate loss and gradient
+        loss, grad = self.loss(X_batch, y_batch, reg)
+        loss_history.append(loss)
 
-      # perform parameter update
-      #########################################################################
-      # TODO:                                                                 #
-      # Update the weights using the gradient and the learning rate.          #
-      #########################################################################
-      # Hint: 1 line of code expected
-      self.theta-=learning_rate*grad
+        # perform parameter update
+        #########################################################################
+        # TODO:                                                                 #
+        # Update the weights using the gradient and the learning rate.          #
+        #########################################################################
+        # Hint: 1 line of code expected
+        self.theta-=learning_rate*grad
 
-      #########################################################################
-      #                       END OF YOUR CODE                                #
-      #########################################################################
+        #########################################################################
+        #                       END OF YOUR CODE                                #
+        #########################################################################
 
-      if verbose and it % 100 == 0:
-        print 'iteration %d / %d: loss %f' % (it, num_iters, loss)
+        if verbose and it % 100 == 0:
+          print 'iteration %d / %d: loss %f' % (it, num_iters, loss)
 
     return loss_history
 
@@ -102,6 +108,12 @@ class SoftmaxClassifier:
     #                           END OF YOUR CODE                              #
     ###########################################################################
     return y_pred
+  def loss_fmin(self, *args):
+    theta,X,y,reg = args
+    return softmax_loss_vectorized(theta, X, y, reg)[0]
+  def grad_fmin(self, *args):
+    theta,X,y,reg = args
+    return softmax_loss_vectorized(theta, X, y, reg)[1]
   
   def loss(self, X_batch, y_batch, reg):
     """

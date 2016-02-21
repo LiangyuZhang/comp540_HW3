@@ -20,6 +20,7 @@ X_train, y_train, X_val, y_val, X_test, y_test = utils.get_CIFAR10_data()
 
 # Generate a random softmax theta matrix and use it to compute the loss.
 
+'''
 theta = np.random.randn(3073,10) * 0.0001
 loss, grad = softmax_loss_vectorized(theta, X_train, y_train, 0.0)
 
@@ -56,6 +57,7 @@ print 'vectorized loss: %e computed in %fs' % (loss_vectorized, toc - tic)
 grad_difference = np.linalg.norm(grad_naive - grad_vectorized, ord='fro')
 print 'Loss difference: %f' % np.abs(loss_naive - loss_vectorized)
 print 'Gradient difference: %f' % grad_difference
+'''
 
 # Use the validation set to tune hyperparameters (regularization strength and
 # learning rate). You should experiment with different ranges for the learning
@@ -77,6 +79,7 @@ regularization_strengths = [5e4, 1e5, 5e5, 1e8]
 # train(self, X, y, learning_rate=1e-3, reg=1e-5, num_iters=100,
 #             batch_size=200, verbose=False)
 '''
+# select best learning rate and reg
 for learningrate in learning_rates:
   for regularization in regularization_strengths:
     softmax=SoftmaxClassifier()
@@ -93,10 +96,15 @@ for learningrate in learning_rates:
 print "best learning rate is ", best_learning_rate
 print "best reg is ", best_reg
 '''
+
+
+
+# select best batch size and iterations
 best_learning_rate = 5e-06
 best_reg = 100000.0
 batch_sizes = [200, 300, 400, 500]
 iterations = [2000,3000,4000,5000]
+'''
 accuracies = np.zeros((len(batch_sizes), len(iterations)))
 for batch_idx, batch_size in enumerate(batch_sizes):
   for it_idx, iteration in enumerate(iterations):
@@ -113,16 +121,49 @@ for batch_idx, batch_size in enumerate(batch_sizes):
 
 np.savetxt("accuracies.txt",accuracies,delimiter=',')
 
+
 print "best batch size is ", best_batch_size
 print "best iteration is ", best_iteration
+'''
+best_iteration = 3000
+best_batch_size = 500
+
+
+# select lambda using fmin train
+best_softmax_fmin = None
+best_val_fmin=-1
+for reg in regularization_strengths:
+    softmax=SoftmaxClassifier()
+    softmax.train(X_train,y_train,best_learning_rate,reg=best_reg, num_iters=best_iteration,
+                  batch_size=best_batch_size, verbose=True)
+    y_pred_val=softmax.predict(X_val)
+    current_val = np.mean(y_pred_val==y_val)
+    if(current_val>best_val_fmin):
+      best_val_fmin = current_val
+      best_softmax_fmin = softmax
+      best_reg_fmin = reg
+
+print "best reg for fmin is ", best_reg_fmin
+
+if best_softmax_fmin:
+  y_test_pred = best_softmax_fmin.predict(X_test)
+  test_accuracy = np.mean(y_test == y_test_pred)
+  print 'softmax_fmin on raw pixels final test set accuracy: %f' % (test_accuracy, )
+
+
+
+'''
+# plot accuracies with respect to batch size and iteration
+
+accuracies = np.genfromtxt("accuracies.txt", delimiter=',')
 
 # plot batch size / iteration against accuracy
 fig = plt.figure()
 ax = fig.gca(projection='3d')
-X, Y = np.meshgrid(batch_sizes, iterations)
+X, Y = np.meshgrid(iterations,batch_sizes)
 surf = ax.plot_surface(X, Y, accuracies, rstride=1, cstride=1, cmap=cm.coolwarm,
                        linewidth=0, antialiased=False)
-ax.set_zlim(0, 1.0)
+#ax.set_zlim(0, 1.0)
 
 ax.zaxis.set_major_locator(LinearLocator(10))
 ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
@@ -130,6 +171,8 @@ ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 fig.colorbar(surf, shrink=0.5, aspect=5)
 
 plt.show()
+
+'''
 
 ################################################################################
 #                              END OF YOUR CODE                                #
